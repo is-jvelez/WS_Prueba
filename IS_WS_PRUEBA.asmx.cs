@@ -17,7 +17,7 @@ namespace Legacy.Services.IS_WS_PRUEBA
 
         public IS_WS_PRUEBA()
         {
-            _crudService = new PruebaCrudService(InMemoryPruebaRepository.Instance);
+            _crudService = new PruebaCrudService(new SqlServerPruebaRepository());
         }
 
         [WebMethod(Description = "Creates a record from listaCampos input")]

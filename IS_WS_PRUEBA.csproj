@@ -38,6 +38,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Data" />
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Services" />
     <Reference Include="System.Xml" />
@@ -56,6 +58,7 @@
     <Compile Include="Domain\Services\PruebaCrudService.cs" />
     <Compile Include="Infrastructure\IPruebaRepository.cs" />
     <Compile Include="Infrastructure\InMemoryPruebaRepository.cs" />
+    <Compile Include="Infrastructure\SqlServerPruebaRepository.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

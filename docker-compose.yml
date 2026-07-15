@@ -1,0 +1,49 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: is_ws_prueba_sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+      MSSQL_PID: Developer
+    ports:
+      - "${SQLSERVER_HOST_PORT:-15533}:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: is_ws_prueba_db_init
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >
+        /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q
+        "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'$$DB_NAME') CREATE DATABASE [$$DB_NAME];"
+    environment:
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+      DB_NAME: ${DB_NAME:-IS_WS_PRUEBA}
+
+  flyway:
+    build:
+      context: ./flyway
+    container_name: is_ws_prueba_flyway
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      FLYWAY_URL: jdbc:sqlserver://sqlserver:1433;databaseName=${DB_NAME:-IS_WS_PRUEBA};encrypt=true;trustServerCertificate=true
+      FLYWAY_USER: sa
+      FLYWAY_PASSWORD: ${SA_PASSWORD}
+      FLYWAY_CREATE_SCHEMAS: "true"
+
+volumes:
+  sqlserver_data:
