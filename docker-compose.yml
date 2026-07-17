@@ -1,3 +1,7 @@
+# Base de datos (SQL Server + migraciones Flyway), en contenedores Linux.
+# El web service IS_WS_PRUEBA (.NET Framework 4.8 / ASMX) corre en local con
+# IIS Express / Visual Studio, apuntando a este SQL Server vía el puerto publicado
+# en el host (ver ${SQLSERVER_HOST_PORT} y Web.config).
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
