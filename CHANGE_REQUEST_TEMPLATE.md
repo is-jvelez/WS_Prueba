@@ -7,58 +7,55 @@
 
 ## 0. Identificación
 
-- **CR / Ticket:** CR-XXX (usa el mismo número en el nombre de rama, ej. `feature/prueba-CR-XXX-1`)
+- **CR / Ticket:** CR-002-1 `feature/prueba-CR-002-1`)
 - **Fecha de solicitud:**
 - **Solicitante:**
 
 ## 1. Contexto y motivación **(obligatorio)**
 
-¿Por qué se necesita este cambio? ¿Qué lo dispara — un incidente, un requerimiento de
-negocio/compliance, una migración previa, un bug reportado? Sin esto, la IA no puede
-priorizar bien entre varias formas válidas de resolver lo mismo.
+se realiza esto para tener la auditoria por id de registro es decir por empresa, para saber que 
+operaciones se realizaron alo largo de su historial.
 
 ## 2. Objetivo **(obligatorio)**
 
-Una o dos frases: qué debe ser distinto después del cambio, en términos de comportamiento
-observable (no de implementación).
+Por consultar historial de cambios de una empresa
 
 ## 3. Alcance
 
 ### Dentro de alcance **(obligatorio si hay ambigüedad)**
-- ...
+- Utilizar infraestructura existente, trata de no quemar codigo SQL desde .net.
 
 ### Fuera de alcance **(obligatorio si hay ambigüedad)**
-- ... (todo lo que alguien podría asumir que está incluido pero no lo está)
+- NO toque lo que ya funciona acctualmente
 
 > Si el cambio toca una operación (Crear/Consultar/Actualizar/Eliminar/otra) que **no
 > existe todavía** en el código, dilo explícitamente — no asumas que la IA debe crearla.
 
 ## 4. Si es un bug: diagnóstico esperado antes del fix
 
-- Reproducir el síntoma con datos concretos (no solo describirlo).
-- Rastrear el dato/comportamiento por cada capa relevante antes de tocar código:
-  petición → parseo/validación → dominio → persistencia (columna SQL) → lectura →
-  formateo de salida. El fix va donde está la causa raíz, no donde es más fácil parchar.
 - Confirmar qué capas **ya funcionan bien** para no tocarlas de más.
 
 ## 5. Restricciones que no se deben romper **(obligatorio)**
 
 Marca las que apliquen (son las más comunes en este servicio):
-- [ ] No cambiar el contrato SOAP existente (WebMethods, `SoapRequestDto`/`SoapResponseDto`,
+- [x] No cambiar el contrato SOAP existente (WebMethods, `SoapRequestDto`/`SoapResponseDto`,
       nombres/tipos de `campo`) salvo que se pida explícitamente.
-- [ ] No degradar tiempo de respuesta de forma perceptible.
-- [ ] Todo cambio de esquema va en una migración Flyway nueva (`flyway/sql/V{n}__*.sql`),
+- [x] No degradar tiempo de respuesta de forma perceptible.
+- [x] Todo cambio de esquema va en una migración Flyway nueva (`flyway/sql/V{n}__*.sql`),
       nunca editando una migración ya aplicada.
-- [ ] Mantener el patrón de códigos de respuesta: `000` éxito, `001` error funcional
+- [x] Mantener el patrón de códigos de respuesta: `000` éxito, `001` error funcional
       (validación/negocio — mensaje claro para el consumidor), `900` error técnico
       (catch-all, sin detalle interno expuesto).
-- [ ] No romper datos existentes (seed u otros registros ya persistidos).
-- [ ] Otra: ...
+- [x] No romper datos existentes (seed u otros registros ya persistidos).
+- [ ] No permite actualizar datos del historial, solo consulta
 
 ## 6. Criterios de aceptación **(obligatorio)**
 
 Lista concreta de comportamientos esperados, en términos de qué `codigo`/`mensaje`/campos
 de salida debe devolver cada escenario relevante (éxito, error funcional, edge cases).
+000 - Consulta exitosa
+001 - NO existe datos a mostrar
+999 - Ocurrio un error
 
 ## 7. Entorno de pruebas — checklist para evitar falsos negativos
 
@@ -69,9 +66,10 @@ de salida debe devolver cada escenario relevante (éxito, error funcional, edge 
       (confirmar con el PID/`CommandLine` de `iisexpress.exe` o el puerto real usado).
 - [ ] El contenedor Docker de SQL Server está corriendo y sano
       (`docker compose ps` / healthcheck).
-- [ ] Si se agregaron migraciones nuevas, se reconstruyó la imagen de Flyway antes de
+- [x] Si se agregaron migraciones nuevas, se reconstruyó la imagen de Flyway antes de
       migrar (`docker compose build flyway`) — el Dockerfile copia `sql/` al build, así
-      que una imagen vieja no ve migraciones nuevas.
+      que una imagen vieja no ve migraciones nuevas. Lo que pasa es que agregue datos es decir que utilice soap para ingresar empresa y modificarlas y elimnarla
+       
 - [ ] Se ejecutó `flyway migrate` y se confirmó la versión de esquema resultante.
 - [ ] Se compiló el proyecto (MSBuild) después de cambios en `.cs` antes de probar.
 
