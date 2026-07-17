@@ -33,17 +33,35 @@ OUTPUT INSERTED.Id, INSERTED.Nombre, INSERTED.Descripcion, INSERTED.FechaFundaci
 VALUES (@Nombre, @Descripcion, @FechaFundacion, 1, SYSUTCDATETIME());";
 
             using (var connection = new SqlConnection(_connectionString))
-            using (var command = new SqlCommand(sql, connection))
             {
-                command.Parameters.Add("@Nombre", SqlDbType.NVarChar, 200).Value = record.Nombre;
-                command.Parameters.Add("@Descripcion", SqlDbType.NVarChar, 1000).Value = record.Descripcion;
-                command.Parameters.Add("@FechaFundacion", SqlDbType.DateTime2).Value = record.FechaFundacion;
-
                 connection.Open();
-                using (var reader = command.ExecuteReader(CommandBehavior.SingleRow))
+                using (var transaction = connection.BeginTransaction())
                 {
-                    reader.Read();
-                    return Map(reader);
+                    try
+                    {
+                        PruebaRecord created;
+                        using (var command = new SqlCommand(sql, connection, transaction))
+                        {
+                            command.Parameters.Add("@Nombre", SqlDbType.NVarChar, 200).Value = record.Nombre;
+                            command.Parameters.Add("@Descripcion", SqlDbType.NVarChar, 1000).Value = record.Descripcion;
+                            command.Parameters.Add("@FechaFundacion", SqlDbType.DateTime2).Value = record.FechaFundacion;
+
+                            using (var reader = command.ExecuteReader(CommandBehavior.SingleRow))
+                            {
+                                reader.Read();
+                                created = Map(reader);
+                            }
+                        }
+
+                        WriteAudit(connection, transaction, "Crear", created.Id);
+                        transaction.Commit();
+                        return created;
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
                 }
             }
         }
@@ -81,18 +99,43 @@ OUTPUT INSERTED.Id, INSERTED.Nombre, INSERTED.Descripcion, INSERTED.FechaFundaci
 WHERE Id = @Id;";
 
             using (var connection = new SqlConnection(_connectionString))
-            using (var command = new SqlCommand(sql, connection))
             {
-                command.Parameters.Add("@Id", SqlDbType.Int).Value = record.Id;
-                command.Parameters.Add("@Nombre", SqlDbType.NVarChar, 200).Value = record.Nombre;
-                command.Parameters.Add("@Descripcion", SqlDbType.NVarChar, 1000).Value = record.Descripcion;
-                command.Parameters.Add("@FechaFundacion", SqlDbType.DateTime2).Value = record.FechaFundacion;
-                command.Parameters.Add("@Activo", SqlDbType.Bit).Value = record.Activo;
-
                 connection.Open();
-                using (var reader = command.ExecuteReader(CommandBehavior.SingleRow))
+                using (var transaction = connection.BeginTransaction())
                 {
-                    return reader.Read() ? Map(reader) : null;
+                    try
+                    {
+                        PruebaRecord updated = null;
+                        using (var command = new SqlCommand(sql, connection, transaction))
+                        {
+                            command.Parameters.Add("@Id", SqlDbType.Int).Value = record.Id;
+                            command.Parameters.Add("@Nombre", SqlDbType.NVarChar, 200).Value = record.Nombre;
+                            command.Parameters.Add("@Descripcion", SqlDbType.NVarChar, 1000).Value = record.Descripcion;
+                            command.Parameters.Add("@FechaFundacion", SqlDbType.DateTime2).Value = record.FechaFundacion;
+                            command.Parameters.Add("@Activo", SqlDbType.Bit).Value = record.Activo;
+
+                            using (var reader = command.ExecuteReader(CommandBehavior.SingleRow))
+                            {
+                                if (reader.Read())
+                                {
+                                    updated = Map(reader);
+                                }
+                            }
+                        }
+
+                        if (updated != null)
+                        {
+                            WriteAudit(connection, transaction, "Actualizar", updated.Id);
+                        }
+
+                        transaction.Commit();
+                        return updated;
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
                 }
             }
         }
@@ -106,12 +149,45 @@ SET Activo = 0,
 WHERE Id = @Id;";
 
             using (var connection = new SqlConnection(_connectionString))
-            using (var command = new SqlCommand(sql, connection))
             {
-                command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
-
                 connection.Open();
-                return command.ExecuteNonQuery() > 0;
+                using (var transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        bool deleted;
+                        using (var command = new SqlCommand(sql, connection, transaction))
+                        {
+                            command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
+                            deleted = command.ExecuteNonQuery() > 0;
+                        }
+
+                        if (deleted)
+                        {
+                            WriteAudit(connection, transaction, "Eliminar", id);
+                        }
+
+                        transaction.Commit();
+                        return deleted;
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
+        private static void WriteAudit(SqlConnection connection, SqlTransaction transaction, string operacion, int pruebaId)
+        {
+            const string sql = "INSERT INTO dbo.PruebaAudit (Operacion, PruebaId) VALUES (@Operacion, @PruebaId);";
+
+            using (var command = new SqlCommand(sql, connection, transaction))
+            {
+                command.Parameters.Add("@Operacion", SqlDbType.NVarChar, 20).Value = operacion;
+                command.Parameters.Add("@PruebaId", SqlDbType.Int).Value = pruebaId;
+                command.ExecuteNonQuery();
             }
         }
 
