@@ -7,9 +7,9 @@
 
 ## 0. Identificación
 
-- **CR / Ticket:** CR-002-1 `feature/prueba-CR-002-1`)
-- **Fecha de solicitud:**
-- **Solicitante:**
+- **CR / Ticket:** CR-002-1 (`feature/prueba-CR-002-1`)
+- **Fecha de solicitud:** 2026-07-17
+- **Solicitante:** Jose Velez
 
 ## 1. Contexto y motivación **(obligatorio)**
 
@@ -24,9 +24,27 @@ Por consultar historial de cambios de una empresa
 
 ### Dentro de alcance **(obligatorio si hay ambigüedad)**
 - Utilizar infraestructura existente, trata de no quemar codigo SQL desde .net.
+- Esta es una operación **Consultar nueva** (no existe todavía en el código): expone por
+  primera vez, vía SOAP, la tabla `dbo.PruebaAudit` creada en CR-001 (hasta ahora solo se
+  escribía, nunca se consultaba). Se llamará al nuevo `WebMethod` **`ConsultarHistorial`**.
+- La consulta se resuelve con una **stored procedure nueva** (`dbo.usp_ConsultarHistorialEmpresa`,
+  creada en una migración Flyway nueva), en vez de SQL parametrizado inline en C# — es un
+  patrón nuevo para este servicio (hoy no existe ninguna SP; todo el acceso a datos usa SQL
+  inline), decidido explícitamente para este cambio para evitar "quemar" el SQL de consulta
+  en .NET.
+- Recibe `id` (el id de la empresa/`Prueba`) como único campo de entrada, igual que
+  `Consultar`. Devuelve una fila por operación de auditoría (`Crear`/`Actualizar`/`Eliminar`)
+  encontrada, más reciente primero. Como `listaCamposSalida` es una lista plana de
+  `campo` (name/value/type) sin agrupamiento nativo, el formato de salida acordado es
+  **campos indexados**: `total` (cantidad de filas) y luego, por cada fila `N` (1-based):
+  `id_N`, `operacion_N`, `fecha_N`.
 
 ### Fuera de alcance **(obligatorio si hay ambigüedad)**
 - NO toque lo que ya funciona acctualmente
+- No se modifica el contrato de los `WebMethods` existentes (`Crear`/`Consultar`/`Actualizar`/`Eliminar`),
+  ni `IPruebaRepository`, ni `InMemoryPruebaRepository` (código muerto, ver CR-001).
+- No se agrega paginación ni filtros adicionales (rango de fechas, tipo de operación) —
+  se devuelve el historial completo de la empresa consultada.
 
 > Si el cambio toca una operación (Crear/Consultar/Actualizar/Eliminar/otra) que **no
 > existe todavía** en el código, dilo explícitamente — no asumas que la IA debe crearla.
@@ -47,15 +65,21 @@ Marca las que apliquen (son las más comunes en este servicio):
       (validación/negocio — mensaje claro para el consumidor), `900` error técnico
       (catch-all, sin detalle interno expuesto).
 - [x] No romper datos existentes (seed u otros registros ya persistidos).
-- [ ] No permite actualizar datos del historial, solo consulta
+- [x] No permite actualizar datos del historial, solo consulta
 
 ## 6. Criterios de aceptación **(obligatorio)**
 
 Lista concreta de comportamientos esperados, en términos de qué `codigo`/`mensaje`/campos
 de salida debe devolver cada escenario relevante (éxito, error funcional, edge cases).
-000 - Consulta exitosa
-001 - NO existe datos a mostrar
-999 - Ocurrio un error
+- `000` - Consulta exitosa. `listaCamposSalida` trae `total` + `id_N`/`operacion_N`/`fecha_N`
+  por cada operación de auditoría encontrada para la empresa, ordenadas de más reciente a
+  más antigua.
+- `001` - No existe historial para el `id` de empresa recibido (sin filas en `PruebaAudit`,
+  exista o no la empresa) — mensaje funcional claro, no error técnico.
+- `001` - Falta o es inválido el campo `id` de entrada (mismo tratamiento que en `Consultar`).
+- `900` - Error técnico catch-all (se corrige el `999` que había quedado escrito antes; el
+  patrón de este servicio, confirmado también en la restricción marcada arriba, es
+  `000`/`001`/`900`, el mismo que ya usa CR-001).
 
 ## 7. Entorno de pruebas — checklist para evitar falsos negativos
 
