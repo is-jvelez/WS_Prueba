@@ -2,12 +2,24 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -File \"$CLAUDE_PROJECT_DIR/.claude/hooks/scope-guard.ps1\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -File \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-release-approval.ps1\"",
-            "timeout": 5
+            "command": "powershell.exe -NoProfile -File \"$CLAUDE_PROJECT_DIR/.claude/hooks/tests-gate.ps1\"",
+            "timeout": 15
           }
         ]
       }

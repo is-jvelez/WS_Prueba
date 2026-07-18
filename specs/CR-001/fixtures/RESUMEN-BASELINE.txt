@@ -1,0 +1,90 @@
+================================================================================
+RESUMEN EJECUTIVO — BASELINE CAPTURADO PARA CR-001
+================================================================================
+
+ESTADO GENERAL: ✓ COMPLETADO SIN BLOQUEOS
+
+1. GATE CRÍTICO PASADO
+   - Query: SELECT Nombre, COUNT(*) FROM dbo.Prueba WHERE Activo=1 GROUP BY Nombre HAVING COUNT(*) > 1
+   - Resultado: 0 filas
+   - Conclusión: No existen registros activos con nombre duplicado
+   - Acción: El pipeline PUEDE proceder sin detenciones por datos preexistentes
+
+2. ENTORNO OPERATIVO
+   - Docker Compose: levantado exitosamente
+   - SQL Server 2022: conectado en localhost:15533
+   - Base de datos IS_WS_PRUEBA: creada
+   - Flyway V1: aplicada (tabla dbo.Prueba existe)
+   - Datos de seed: 9 registros cargados (8 activos, 1 inactivo)
+
+3. CAUSA RAÍZ DEL TRUNCADO DE FECHA CONFIRMADA
+   - Archivo: Domain/Services/PruebaCrudService.cs
+   - Línea: 264
+   - Problema: ToString("yyyy-MM-dd", ...) descarta hora
+   - Fix: Cambiar a ToString("yyyy-MM-ddTHH:mm:ssZ", ...)
+   - Línea de referencia (correcta): 266 (fecha_actualizacion usa formato correcto)
+
+4. COMPORTAMIENTO ACTUAL QUE CAMBIARÁ EN CR-001
+   - Crear con nombre duplicado: ACTUALMENTE ÉXITO (cambiará a error 001)
+   - Actualizar con nombre duplicado: ACTUALMENTE ÉXITO (cambiará a error 001)
+   - Formato de fecha_fundacion: ACTUALMENTE truncado (cambiará a incluir hora)
+   - Auditoría: ACTUALMENTE ausente (se agregará en fase 2)
+
+5. OPERACIONES CAPTURADAS Y DOCUMENTADAS
+   ✓ Crear — caso típico (con hora)
+   ✓ Crear — fecha sin hora (regresión esperada)
+   ✓ Crear — nombre duplicado (actualmente exitoso)
+   ✓ Crear — campos requeridos faltantes
+   ✓ Consultar — registro activo
+   ✓ Consultar — registro inactivo (error 001)
+   ✓ Actualizar — campos opcionales
+   ✓ Actualizar — con nombre duplicado (actualmente exitoso)
+   ✓ Eliminar — soft delete (UPDATE Activo=0)
+   ✓ Eliminar — registro ya eliminado (error 001)
+
+6. PROBLEMA TÉCNICO IDENTIFICADO (NO-BLOQUEANTE)
+   - Problema: Flyway no procesa GO statements en SQL Server
+   - Impacto: Los datos de seed en V1 no se insertaron automáticamente
+   - Causa: Flyway ejecuta SQL ANSI estándar via JDBC, no SQL Server tsql
+   - Solución: Reescribir migraciones Flyway futuras sin GO statements
+   - Estado: Resuelto manualmente para este baseline (datos insertados)
+
+7. ARTEFACTOS GENERADOS
+   - baseline-snapshot.md: documentación completa del estado actual (146 líneas)
+   - fixtures/caso-*.xml: requests y responses SOAP de 5 casos críticos
+   - fixtures/sql-verification-queries.sql: queries para verificación y regresión
+   - status-pipeline.json: actualizado a "done" para fase 1
+
+8. PRÓXIMO PASO
+   - Fase 2 (implementer): Crear migraciones Flyway V2 y V3 (auditoría + índice único)
+   - Fase 2 (implementer): Implementar los 3 cambios de código (auditoría, validación, fix fecha)
+   - Fase 3: Ejecutar tests unitarios/integración
+   - Fase 4: Re-ejecutar estos fixtures contra el código nuevo — comparar outputs
+
+================================================================================
+NOTAS PARA REGRESSION-TESTER (FASE 4)
+
+Los casos del baseline que DEBEN cambiar después de implementar CR-001:
+
+1. Caso 1 (Crear tipico):
+   ANTES: fecha_fundacion="2020-10-15"
+   DESPUÉS: fecha_fundacion="2020-10-15T14:30:00Z"
+   
+2. Caso 5 (Crear duplicado):
+   ANTES: Codigo=000 (éxito)
+   DESPUÉS: Codigo=001, Mensaje="Ya existe un registro activo con ese nombre."
+   
+3. Todos los casos exitosos:
+   ANTES: No hay fila de auditoría
+   DESPUÉS: Nueva fila en dbo.PruebaAuditoria con Operacion='Crear'/'Actualizar'/'Eliminar'
+
+4. Caso con nombre duplicado tras actualizar:
+   ANTES: Codigo=000 (éxito)
+   DESPUÉS: Codigo=001
+
+================================================================================
+Baseline capturado: 2026-07-17
+CR: CR-001
+Comportamiento-Capturer: haiku (modelo)
+Estado: READY FOR PHASE 2
+================================================================================

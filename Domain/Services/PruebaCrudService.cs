@@ -59,6 +59,10 @@ namespace Legacy.Services.IS_WS_PRUEBA.Domain.Services
                     Field("id", created.Id.ToString(CultureInfo.InvariantCulture), "int")
                 });
             }
+            catch (DuplicateNombreActivoException)
+            {
+                return FunctionalError("Ya existe un registro activo con ese nombre.");
+            }
             catch (Exception exception)
             {
                 Trace.TraceError("IS_WS_PRUEBA Crear failed: {0}", exception.Message);
@@ -170,6 +174,10 @@ namespace Legacy.Services.IS_WS_PRUEBA.Domain.Services
 
                 return Success("Registro actualizado.", BuildOutput(updated));
             }
+            catch (DuplicateNombreActivoException)
+            {
+                return FunctionalError("Ya existe un registro activo con ese nombre.");
+            }
             catch (Exception exception)
             {
                 Trace.TraceError("IS_WS_PRUEBA Actualizar failed: {0}", exception.Message);
@@ -261,7 +269,7 @@ namespace Legacy.Services.IS_WS_PRUEBA.Domain.Services
                 Field("id", record.Id.ToString(CultureInfo.InvariantCulture), "int"),
                 Field("nombre", record.Nombre, "string"),
                 Field("descripcion", record.Descripcion, "string"),
-                Field("fecha_fundacion", record.FechaFundacion.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), "datetime"),
+                Field("fecha_fundacion", record.FechaFundacion.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture), "datetime"),
                 Field("activo", record.Activo ? "true" : "false", "bool"),
                 Field("fecha_actualizacion", record.FechaActualizacion.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture), "datetime")
             };

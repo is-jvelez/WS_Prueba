@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:svc="http://legacy.services.is_ws_prueba/">
+  <soap:Body>
+    <svc:Eliminar>
+      <request>
+        <listaCampos>
+          <SoapCampoDto>
+            <Nombre>id</Nombre>
+            <Valor>2</Valor>
+            <Tipo>int</Tipo>
+          </SoapCampoDto>
+        </listaCampos>
+      </request>
+    </svc:Eliminar>
+  </soap:Body>
+</soap:Envelope>

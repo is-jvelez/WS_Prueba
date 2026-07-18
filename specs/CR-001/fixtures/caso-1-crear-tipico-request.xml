@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:svc="http://legacy.services.is_ws_prueba/">
+  <soap:Body>
+    <svc:Crear>
+      <request>
+        <listaCampos>
+          <SoapCampoDto>
+            <Nombre>nombre</Nombre>
+            <Valor>Test Company XYZ</Valor>
+            <Tipo>string</Tipo>
+          </SoapCampoDto>
+          <SoapCampoDto>
+            <Nombre>descripcion</Nombre>
+            <Valor>Company for testing purposes</Valor>
+            <Tipo>string</Tipo>
+          </SoapCampoDto>
+          <SoapCampoDto>
+            <Nombre>fecha_fundacion</Nombre>
+            <Valor>2020-10-15T14:30:00Z</Valor>
+            <Tipo>datetime</Tipo>
+          </SoapCampoDto>
+        </listaCampos>
+      </request>
+    </svc:Crear>
+  </soap:Body>
+</soap:Envelope>

@@ -6,8 +6,24 @@ using Legacy.Services.IS_WS_PRUEBA.Domain.Entities;
 
 namespace Legacy.Services.IS_WS_PRUEBA.Infrastructure
 {
+    /// <summary>
+    /// Excepción identificable para la violación del índice único filtrado
+    /// UX_Prueba_Nombre_Activo (dbo.Prueba(Nombre) WHERE Activo = 1). Permite a
+    /// PruebaCrudService.Crear/Actualizar traducirla a un error funcional (codigo=001)
+    /// en vez de dejar que se propague como error técnico genérico (codigo=900).
+    /// </summary>
+    public sealed class DuplicateNombreActivoException : Exception
+    {
+        public DuplicateNombreActivoException(Exception inner)
+            : base("Ya existe un registro activo con ese nombre.", inner)
+        {
+        }
+    }
+
     public sealed class SqlServerPruebaRepository : IPruebaRepository
     {
+        private const string UniqueIndexName = "UX_Prueba_Nombre_Activo";
+
         private readonly string _connectionString;
 
         public SqlServerPruebaRepository()
@@ -27,23 +43,53 @@ namespace Legacy.Services.IS_WS_PRUEBA.Infrastructure
 
         public PruebaRecord Create(PruebaRecord record)
         {
-            const string sql = @"
+            const string insertSql = @"
 INSERT INTO dbo.Prueba (Nombre, Descripcion, FechaFundacion, Activo, FechaActualizacion)
 OUTPUT INSERTED.Id, INSERTED.Nombre, INSERTED.Descripcion, INSERTED.FechaFundacion, INSERTED.Activo, INSERTED.FechaActualizacion
 VALUES (@Nombre, @Descripcion, @FechaFundacion, 1, SYSUTCDATETIME());";
 
             using (var connection = new SqlConnection(_connectionString))
-            using (var command = new SqlCommand(sql, connection))
             {
-                command.Parameters.Add("@Nombre", SqlDbType.NVarChar, 200).Value = record.Nombre;
-                command.Parameters.Add("@Descripcion", SqlDbType.NVarChar, 1000).Value = record.Descripcion;
-                command.Parameters.Add("@FechaFundacion", SqlDbType.DateTime2).Value = record.FechaFundacion;
-
                 connection.Open();
-                using (var reader = command.ExecuteReader(CommandBehavior.SingleRow))
+                using (var transaction = connection.BeginTransaction())
                 {
-                    reader.Read();
-                    return Map(reader);
+                    try
+                    {
+                        PruebaRecord created;
+                        using (var command = new SqlCommand(insertSql, connection, transaction))
+                        {
+                            command.Parameters.Add("@Nombre", SqlDbType.NVarChar, 200).Value = record.Nombre;
+                            command.Parameters.Add("@Descripcion", SqlDbType.NVarChar, 1000).Value = record.Descripcion;
+                            command.Parameters.Add("@FechaFundacion", SqlDbType.DateTime2).Value = record.FechaFundacion;
+
+                            using (var reader = command.ExecuteReader(CommandBehavior.SingleRow))
+                            {
+                                reader.Read();
+                                created = Map(reader);
+                            }
+                        }
+
+                        InsertAuditoria(connection, transaction, created.Id, "Crear");
+
+                        transaction.Commit();
+                        return created;
+                    }
+                    catch (SqlException sqlException)
+                    {
+                        RollbackSafely(transaction);
+
+                        if (IsUniqueNombreActivoViolation(sqlException))
+                        {
+                            throw new DuplicateNombreActivoException(sqlException);
+                        }
+
+                        throw;
+                    }
+                    catch
+                    {
+                        RollbackSafely(transaction);
+                        throw;
+                    }
                 }
             }
         }
@@ -70,7 +116,7 @@ WHERE Id = @Id;";
 
         public PruebaRecord Update(PruebaRecord record)
         {
-            const string sql = @"
+            const string updateSql = @"
 UPDATE dbo.Prueba
 SET Nombre = @Nombre,
     Descripcion = @Descripcion,
@@ -81,37 +127,127 @@ OUTPUT INSERTED.Id, INSERTED.Nombre, INSERTED.Descripcion, INSERTED.FechaFundaci
 WHERE Id = @Id;";
 
             using (var connection = new SqlConnection(_connectionString))
-            using (var command = new SqlCommand(sql, connection))
             {
-                command.Parameters.Add("@Id", SqlDbType.Int).Value = record.Id;
-                command.Parameters.Add("@Nombre", SqlDbType.NVarChar, 200).Value = record.Nombre;
-                command.Parameters.Add("@Descripcion", SqlDbType.NVarChar, 1000).Value = record.Descripcion;
-                command.Parameters.Add("@FechaFundacion", SqlDbType.DateTime2).Value = record.FechaFundacion;
-                command.Parameters.Add("@Activo", SqlDbType.Bit).Value = record.Activo;
-
                 connection.Open();
-                using (var reader = command.ExecuteReader(CommandBehavior.SingleRow))
+                using (var transaction = connection.BeginTransaction())
                 {
-                    return reader.Read() ? Map(reader) : null;
+                    try
+                    {
+                        PruebaRecord updated;
+                        using (var command = new SqlCommand(updateSql, connection, transaction))
+                        {
+                            command.Parameters.Add("@Id", SqlDbType.Int).Value = record.Id;
+                            command.Parameters.Add("@Nombre", SqlDbType.NVarChar, 200).Value = record.Nombre;
+                            command.Parameters.Add("@Descripcion", SqlDbType.NVarChar, 1000).Value = record.Descripcion;
+                            command.Parameters.Add("@FechaFundacion", SqlDbType.DateTime2).Value = record.FechaFundacion;
+                            command.Parameters.Add("@Activo", SqlDbType.Bit).Value = record.Activo;
+
+                            using (var reader = command.ExecuteReader(CommandBehavior.SingleRow))
+                            {
+                                updated = reader.Read() ? Map(reader) : null;
+                            }
+                        }
+
+                        if (updated == null)
+                        {
+                            transaction.Commit();
+                            return null;
+                        }
+
+                        InsertAuditoria(connection, transaction, updated.Id, "Actualizar");
+
+                        transaction.Commit();
+                        return updated;
+                    }
+                    catch (SqlException sqlException)
+                    {
+                        RollbackSafely(transaction);
+
+                        if (IsUniqueNombreActivoViolation(sqlException))
+                        {
+                            throw new DuplicateNombreActivoException(sqlException);
+                        }
+
+                        throw;
+                    }
+                    catch
+                    {
+                        RollbackSafely(transaction);
+                        throw;
+                    }
                 }
             }
         }
 
         public bool Delete(int id)
         {
-            const string sql = @"
+            const string deleteSql = @"
 UPDATE dbo.Prueba
 SET Activo = 0,
     FechaActualizacion = SYSUTCDATETIME()
 WHERE Id = @Id;";
 
             using (var connection = new SqlConnection(_connectionString))
-            using (var command = new SqlCommand(sql, connection))
             {
-                command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
-
                 connection.Open();
-                return command.ExecuteNonQuery() > 0;
+                using (var transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        int rowsAffected;
+                        using (var command = new SqlCommand(deleteSql, connection, transaction))
+                        {
+                            command.Parameters.Add("@Id", SqlDbType.Int).Value = id;
+                            rowsAffected = command.ExecuteNonQuery();
+                        }
+
+                        if (rowsAffected > 0)
+                        {
+                            InsertAuditoria(connection, transaction, id, "Eliminar");
+                        }
+
+                        transaction.Commit();
+                        return rowsAffected > 0;
+                    }
+                    catch
+                    {
+                        RollbackSafely(transaction);
+                        throw;
+                    }
+                }
+            }
+        }
+
+        private static void InsertAuditoria(SqlConnection connection, SqlTransaction transaction, int pruebaId, string operacion)
+        {
+            const string sql = @"
+INSERT INTO dbo.PruebaAuditoria (PruebaId, Operacion, FechaUtc)
+VALUES (@PruebaId, @Operacion, SYSUTCDATETIME());";
+
+            using (var command = new SqlCommand(sql, connection, transaction))
+            {
+                command.Parameters.Add("@PruebaId", SqlDbType.Int).Value = pruebaId;
+                command.Parameters.Add("@Operacion", SqlDbType.VarChar, 20).Value = operacion;
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static bool IsUniqueNombreActivoViolation(SqlException sqlException)
+        {
+            return sqlException.Number == 2601
+                && sqlException.Message.IndexOf(UniqueIndexName, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static void RollbackSafely(SqlTransaction transaction)
+        {
+            try
+            {
+                transaction.Rollback();
+            }
+            catch (Exception)
+            {
+                // La conexión pudo haberse cerrado/roto antes del rollback; no hay más que hacer aquí,
+                // la excepción original sigue propagándose desde el bloque catch que la invocó.
             }
         }
 

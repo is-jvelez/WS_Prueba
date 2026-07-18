@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:svc="http://legacy.services.is_ws_prueba/">
+  <soap:Body>
+    <svc:Crear>
+      <request>
+        <listaCampos>
+          <SoapCampoDto>
+            <Nombre>nombre</Nombre>
+            <Valor>Prueba Alpha</Valor>
+            <Tipo>string</Tipo>
+          </SoapCampoDto>
+          <SoapCampoDto>
+            <Nombre>descripcion</Nombre>
+            <Valor>Intento de duplicado - este caso debe fallar tras CR-001</Valor>
+            <Tipo>string</Tipo>
+          </SoapCampoDto>
+          <SoapCampoDto>
+            <Nombre>fecha_fundacion</Nombre>
+            <Valor>2020-01-01</Valor>
+            <Tipo>datetime</Tipo>
+          </SoapCampoDto>
+        </listaCampos>
+      </request>
+    </svc:Crear>
+  </soap:Body>
+</soap:Envelope>

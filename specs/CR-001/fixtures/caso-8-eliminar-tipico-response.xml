@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <EliminarResponse xmlns="http://legacy.services.is_ws_prueba/">
+      <EliminarResult>
+        <Codigo>000</Codigo>
+        <Mensaje>Registro eliminado.</Mensaje>
+        <ListaCamposSalida/>
+      </EliminarResult>
+    </EliminarResponse>
+  </soap:Body>
+</soap:Envelope>

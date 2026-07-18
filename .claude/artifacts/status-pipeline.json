@@ -1,0 +1,147 @@
+{
+  "cr_id": "CR-001",
+  "current_phase": "6-deploy",
+  "last_updated": "2026-07-18T00:50:00Z",
+  "pipeline_closed": true,
+  "phases": [
+    {
+      "id": "0-intake",
+      "agent": "orchestrator",
+      "status": "done",
+      "started_at": "2026-07-17T18:42:50Z",
+      "completed_at": "2026-07-17T18:42:50Z",
+      "tests_last_run": null,
+      "artifacts": []
+    },
+    {
+      "id": "1-behavior-capture",
+      "agent": "behavior-capturer,spec-writer",
+      "status": "done",
+      "started_at": "2026-07-17T18:42:50Z",
+      "completed_at": "2026-07-17T18:56:00Z",
+      "tests_last_run": null,
+      "artifacts": [
+        "specs/CR-001/baseline-snapshot.md",
+        "specs/CR-001/spec.md",
+        "specs/CR-001/fixtures/caso-1-crear-tipico-request.xml",
+        "specs/CR-001/fixtures/caso-1-crear-tipico-response.xml",
+        "specs/CR-001/fixtures/caso-4-consultar-inactivo-request.xml",
+        "specs/CR-001/fixtures/caso-4-consultar-inactivo-response.xml",
+        "specs/CR-001/fixtures/caso-5-crear-duplicado-actual-exito-request.xml",
+        "specs/CR-001/fixtures/caso-5-crear-duplicado-actual-exito-response.xml",
+        "specs/CR-001/fixtures/caso-8-eliminar-tipico-request.xml",
+        "specs/CR-001/fixtures/caso-8-eliminar-tipico-response.xml",
+        "specs/CR-001/fixtures/sql-verification-queries.sql",
+        "specs/CR-001/fixtures/RESUMEN-BASELINE.txt"
+      ]
+    },
+    {
+      "id": "2-implementacion",
+      "agent": "implementer",
+      "status": "done",
+      "started_at": "2026-07-17T18:56:00Z",
+      "completed_at": "2026-07-17T19:50:00Z",
+      "tests_last_run": null,
+      "artifacts": [
+        "flyway/sql/V2__create_prueba_auditoria_table.sql",
+        "flyway/sql/V3__add_unique_index_prueba_nombre_activo.sql",
+        "Infrastructure/SqlServerPruebaRepository.cs",
+        "Domain/Services/PruebaCrudService.cs",
+        "IS_WS_PRUEBA.Tests/IS_WS_PRUEBA.Tests.csproj",
+        "IS_WS_PRUEBA.Tests/Unit/PruebaCrudServiceTests.cs",
+        "IS_WS_PRUEBA.Tests/Unit/FakeDuplicateNombreRepository.cs",
+        "IS_WS_PRUEBA.Tests/Integration/SqlServerPruebaRepositoryTests.cs",
+        "IS_WS_PRUEBA.sln"
+      ]
+    },
+    {
+      "id": "3-tests-unitarios-integracion",
+      "agent": "unit-integration-tester",
+      "status": "done",
+      "started_at": "2026-07-17T19:50:00Z",
+      "completed_at": "2026-07-17T21:10:00Z",
+      "tests_last_run": "PASA - dotnet test IS_WS_PRUEBA.Tests: 6/6 tests pasando (3 unit + 3 integración contra SQL Server real). Gaps de cobertura documentados (no bloqueantes): auditoría de Update, nombre duplicado inactivo, reactivación con colisión, fecha sin hora — a vigilar en fase 4.",
+      "artifacts": [
+        "specs/CR-001/unit-integration-report.md"
+      ]
+    },
+    {
+      "id": "4-tests-regresion",
+      "agent": "regression-tester",
+      "status": "done",
+      "started_at": "2026-07-17T21:10:00Z",
+      "completed_at": "2026-07-17T21:50:00Z",
+      "tests_last_run": "PASA - Comparación caso a caso contra el baseline sin regresiones no previstas. Los 4 gaps de fase 3 fueron inicialmente 'mitigados' solo por análisis de código; el orquestador amplió con 3 tests de integración reales (Update_Exitoso_EscribeFilaDeAuditoriaConOperacionActualizar, Create_ConNombreDuplicadoDeRegistroInactivo_TieneExito, Update_ReactivacionConNombreColisionandoConActivo_LanzaDuplicateNombreActivoException) y confirmó 9/9 tests pasando contra SQL Server real.",
+      "artifacts": [
+        "specs/CR-001/regression-report.md",
+        "IS_WS_PRUEBA.Tests/Integration/SqlServerPruebaRepositoryTests.cs (ampliado por orquestador)"
+      ]
+    },
+    {
+      "id": "5-validacion-e2e",
+      "agent": "validator",
+      "status": "done",
+      "started_at": "2026-07-17T21:50:00Z",
+      "completed_at": "2026-07-17T22:20:00Z",
+      "tests_last_run": "APROBADO - Reset completo (down -v && up -d), V1/V2/V3 aplicaron limpias desde base vacía. Esquema confirmado (dbo.Prueba, dbo.PruebaAuditoria, UX_Prueba_Nombre_Activo). CRUD validado vía tests reales de fase 3/4 (9/9); no se levantó IIS Express (limitación esperada, app no corre en contenedor).",
+      "artifacts": [
+        "specs/CR-001/validation-report.md"
+      ]
+    },
+    {
+      "id": "6-deploy",
+      "agent": "deployer",
+      "status": "done",
+      "started_at": "2026-07-17T22:20:00Z",
+      "completed_at": "2026-07-17T23:48:00Z",
+      "tests_last_run": "APROBADO - docker compose up -d --build: SQL Server healthy, Flyway aplicó V1/V2/V3 desde base vacía sin errores de checksum. Deploy de la app .asmx queda pendiente manual (IIS Express/Visual Studio).",
+      "artifacts": [
+        "specs/CR-001/deploy-report.md"
+      ]
+    }
+  ],
+  "hitl_events": [
+    {
+      "phase": "2-implementacion",
+      "agent": "implementer",
+      "type": "anomaly_detected",
+      "timestamp": "2026-07-17T15:30:00Z",
+      "summary": "flyway/sql/V1__create_prueba_table.sql tenía una modificación local sin commitear (INSERT de seed agregado al final del archivo) que no coincidía con el checksum registrado como aplicado en el historial de Flyway de la base de datos compartida del entorno dev (is_ws_prueba_sqlserver, DB IS_WS_PRUEBA). Bloqueaba 'docker compose up -d flyway' con 'Migration checksum mismatch for migration version 1'.",
+      "resolution": "Usuario eligió revertir V1 a la versión commiteada (git checkout -- flyway/sql/V1__create_prueba_table.sql)."
+    },
+    {
+      "phase": "3-tests-unitarios-integracion",
+      "agent": "unit-integration-tester",
+      "type": "anomaly_detected",
+      "timestamp": "2026-07-17T21:00:00Z",
+      "summary": "Tras revertir V1, el checksum mismatch reapareció en dirección inversa: el volumen Docker ya tenía registrado el checksum de la versión MODIFICADA de V1 (aplicada durante behavior-capturer en fase 1), no el de la versión commiteada recién restaurada.",
+      "resolution": "Usuario eligió reset completo (docker compose down -v && docker compose up -d). V1/V2/V3 aplicaron limpias desde cero; el seed de 9 registros se reinsertó manualmente (V1 sigue usando 'GO', no procesado por Flyway/JDBC)."
+    },
+    {
+      "phase": "6-deploy",
+      "agent": "orchestrator",
+      "type": "scope_guard_gap",
+      "timestamp": "2026-07-18T00:45:00Z",
+      "summary": "scope-guard.ps1 bloqueaba editar change-request/CR-001.md y change-request/.active para el cierre del CR (fase 6) porque ni el propio archivo del CR ni .active estaban en su lista 'alwaysAllowed' (solo specs/** y .claude/artifacts/**), a pesar de que CLAUDE.md exige exactamente esa edición al orquestador en esta fase.",
+      "resolution": "Usuario aprobó el contenido del cierre (estado: done, estimado_manual_horas: 8) y luego aprobó agregar 'change-request/.active' y 'change-request/$activeCr.md' a la lista alwaysAllowed de .claude/hooks/scope-guard.ps1 como fix permanente para futuros cierres de CR."
+    }
+  ],
+  "notas_behavior_capture": "Gate de duplicados activos de Nombre: 0 filas (pasa). Flyway no procesa statements 'GO' de SQL Server (cliente JDBC ejecuta SQL ANSI estándar) — implementer debe evitar 'GO' en las migraciones V2/V3 nuevas (cumplido).",
+  "roi_horas": {
+    "estimado_manual_total": 8,
+    "estimado_manual_por_fase": {
+      "analisis_spec": 1.5,
+      "implementacion": 3.0,
+      "testing_unit_integracion_regresion": 2.5,
+      "validacion_deploy": 1.0
+    },
+    "real_pipeline_total_aprox": 5.3,
+    "real_por_fase_aprox": {
+      "analisis_spec": 0.3,
+      "implementacion": 1.0,
+      "testing_unit_integracion_regresion": 2.0,
+      "validacion_deploy": 2.0
+    },
+    "nota": "Estimado manual por fase es juicio del orquestador (calibrado para sumar el total de 8h dado por el usuario), no un dato provisto por el usuario. Real calculado a partir de duration_ms medido de cada subagente; no incluye troubleshooting HITL del orquestador ni tiempo de espera humana. 'validacion_deploy' es la unica fila donde el pipeline tomo mas tiempo que el estimado manual, por los dos resets completos de Docker forzados por los incidentes de checksum de Flyway."
+  }
+}

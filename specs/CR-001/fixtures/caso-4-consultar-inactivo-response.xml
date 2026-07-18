@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <ConsultarResponse xmlns="http://legacy.services.is_ws_prueba/">
+      <ConsultarResult>
+        <Codigo>001</Codigo>
+        <Mensaje>Registro no encontrado.</Mensaje>
+        <ListaCamposSalida/>
+      </ConsultarResult>
+    </ConsultarResponse>
+  </soap:Body>
+</soap:Envelope>

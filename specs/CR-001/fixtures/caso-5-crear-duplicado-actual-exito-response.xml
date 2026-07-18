@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <CrearResponse xmlns="http://legacy.services.is_ws_prueba/">
+      <CrearResult>
+        <Codigo>000</Codigo>
+        <Mensaje>Registro creado.</Mensaje>
+        <ListaCamposSalida>
+          <SoapCampoDto>
+            <Nombre>id</Nombre>
+            <Valor>11</Valor>
+            <Tipo>int</Tipo>
+          </SoapCampoDto>
+          <SoapCampoDto>
+            <Nombre>nombre</Nombre>
+            <Valor>Prueba Alpha</Valor>
+            <Tipo>string</Tipo>
+          </SoapCampoDto>
+          <SoapCampoDto>
+            <Nombre>descripcion</Nombre>
+            <Valor>Intento de duplicado - este caso debe fallar tras CR-001</Valor>
+            <Tipo>string</Tipo>
+          </SoapCampoDto>
+          <SoapCampoDto>
+            <Nombre>fecha_fundacion</Nombre>
+            <Valor>2020-01-01</Valor>
+            <Tipo>datetime</Tipo>
+          </SoapCampoDto>
+          <SoapCampoDto>
+            <Nombre>activo</Nombre>
+            <Valor>true</Valor>
+            <Tipo>bool</Tipo>
+          </SoapCampoDto>
+          <SoapCampoDto>
+            <Nombre>fecha_actualizacion</Nombre>
+            <Valor>2026-07-17T13:56:00Z</Valor>
+            <Tipo>datetime</Tipo>
+          </SoapCampoDto>
+        </ListaCamposSalida>
+      </CrearResult>
+    </CrearResponse>
+  </soap:Body>
+</soap:Envelope>
